@@ -9,8 +9,12 @@ WorkingDirectory={{app_dir}}
 User={{app_user}}
 Group={{app_user}}
 Environment=PATH=/home/{{app_user}}/.rubies/ruby-{{app_ruby_version}}/bin:/usr/local/bin:/usr/bin:/bin
+Environment=APP_ENV=production
 ExecStart=/home/{{app_user}}/.rubies/ruby-{{app_ruby_version}}/bin/ruby -S \
-    bundle exec ruby {{app_name}} -c {{app_dir}}/config.yml
+    bundle exec ruby aad-leihs-authenticator -c {{app_dir}}/config.yml
 
 [Install]
 WantedBy=multi-user.target
+
+
+# vi: ft=sh

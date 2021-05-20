@@ -1,6 +1,6 @@
-- name: install config template
-  template: 
-    src: config.yml
+- name: install config
+  copy:
+    src: '{{config_file}}'
     dest: '{{app_dir}}/config.yml'
     mode: 0600
     owner: '{{app_user}}'
@@ -8,22 +8,13 @@
 
 - name: copy {{app_name}}.service
   template:
-    src: '{{app_name}}.service'
+    src: 'aad-leihs-auth.service'
     dest: /etc/systemd/system/{{app_name}}.service
     mode: 0644
- 
-- name: reload systemctl
-  command: systemctl daemon-reload
-  changed_when: false
 
 - name: restart {{app_name}}.service
   service:
     name: '{{app_name}}.service'
     state: restarted
+    daemon_reload: yes
     enabled: yes
-
-- name: wait for {{app_name}}.service
-  wait_for:
-    host: localhost
-    port: '{{adl_port}}'
-    timeout: 60

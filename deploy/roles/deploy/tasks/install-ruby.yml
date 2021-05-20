@@ -7,13 +7,11 @@
   become_user: '{{app_user}}'
   become_method: sudo
 
-- name: bundle ruby gems 
+- name: bundle ruby gems
   shell: |
     #!/bin/bash
     set eux
     export PATH=$HOME/.rubies/ruby-{{app_ruby_version}}/bin:$PATH
-    which gem
-    gem install bundler
     cd {{app_dir}}
     bundle install
   become: yes

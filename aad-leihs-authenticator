@@ -1,5 +1,5 @@
 #!/usr/bin/env ruby
- 
+
 require 'active_support/all'
 require 'cgi'
 require 'digest'
@@ -19,14 +19,14 @@ $logger = Logger.new(STDOUT)
 $logger.level = Logger::WARN
 
 # DEV stuff only
-# require 'pry'
-# require 'rerun'
-# require 'pry-remote'
+require 'pry'
+require 'rerun'
+require 'pry-remote'
 
 ################################################################################
 ### options and config #########################################################
 ################################################################################
- 
+
 options = OpenStruct.new
 # options.config_file = Pathname.new("dev/config.yml")
 OptionParser.new do |opts|
@@ -35,6 +35,11 @@ OptionParser.new do |opts|
   opts.on("-c", "--config-file [PATH]", String, "Configuration file") do |cf|
     options.config_file = Pathname.new cf
   end
+
+  opts.on("-l", "--log-level LOG_LEVEL", String, "Logging level FATAL, ERROR, WARN, INFO, or DEBUG") do |ll|
+    $logger.level = "Logger::#{ll.upcase}".constantize
+  end
+
 end.parse!
 
 $config = {
@@ -54,7 +59,7 @@ class AuthenticationError < StandardError
   end
 end
 
- 
+
 ################################################################################
 ### the web app ################################################################
 ################################################################################
@@ -74,18 +79,21 @@ class AuthenticatorApp <  Sinatra::Base
     $external_base_url = $config[:external_base_url].presence  \
       || (raise 'external_base_url must be present in config')
 
+    $name = $config[:name].presence \
+      || (raise 'name must be present in config')
+
     $client_id = $config[:client_id].presence  \
       || (raise 'client_id must be present in config')
 
-    $private_key = OpenSSL::PKey.read( 
+    $private_key = OpenSSL::PKey.read(
         $config[:private_key].presence \
         || (raise 'private_key must be present in config'))
 
-    $public_key = OpenSSL::PKey.read( 
+    $public_key = OpenSSL::PKey.read(
         $config[:public_key].presence \
         || (raise 'public_key must be present in config'))
 
-    $leihs_public_key = OpenSSL::PKey.read( 
+    $leihs_public_key = OpenSSL::PKey.read(
         $config[:leihs_public_key].presence \
         || (raise 'leihs_public_key must be present in config'))
 
@@ -93,13 +101,13 @@ class AuthenticatorApp <  Sinatra::Base
 
     # get per tenant config and signing keys
     # NOTE: Microsoft recomments to reload this every 24 Hours
-    
-    $open_id_config = 
+
+    $open_id_config =
       "https://login.microsoftonline.com/#{$config[:tenant]}/.well-known/openid-configuration" \
       .yield_self { |config_url| RestClient.get config_url}
       .yield_self { |resp| JSON.parse(resp).with_indifferent_access }
 
-    $ms_keys = $open_id_config 
+    $ms_keys = $open_id_config
       .yield_self { |config| config[:jwks_uri] }
       .yield_self { |jwks_uri| RestClient.get jwks_uri}
       .yield_self { |resp| JSON.parse(resp).with_indifferent_access }
@@ -108,7 +116,18 @@ class AuthenticatorApp <  Sinatra::Base
   end
 
 
-  get '/authenticators/ms-open-id/status' do
+#  before do
+#    binding.remote_pry
+#    $logger.debug([:before, params])
+#    if params['name'] != $name
+#      raise "The name '#{params['name']}' does not match the name from configuration '#{$name}'."
+#    end
+#  end
+
+
+  ### just for pinging this service ############################################
+
+  get '/authenticators/ms-open-id/:name/status' do
     'OK'
   end
 
@@ -118,7 +137,7 @@ class AuthenticatorApp <  Sinatra::Base
   def expired_response e, sign_in_request_token
     status 403
     $logger.error "#{e} #{e.backtrace}"
-    sign_in_request = JWT.decode sign_in_request_token, 
+    sign_in_request = JWT.decode sign_in_request_token,
       $leihs_public_key, false, { algorithm: 'ES256' }
 
     <<-HTML.strip_heredoc
@@ -163,14 +182,16 @@ class AuthenticatorApp <  Sinatra::Base
 
 
   ### sign-in ##################################################################
-  
 
-  get '/authenticators/ms-open-id/sign-in' do
 
-    begin 
+  get '/authenticators/ms-open-id/:name/sign-in' do
+
+    $logger.debug(['sign-in', params])
+
+    begin
 
       sign_in_request_token = params[:token].presence
-      sign_in_request = JWT.decode sign_in_request_token, 
+      sign_in_request = JWT.decode sign_in_request_token,
         $leihs_public_key, true, { algorithm: 'ES256' }
 
       email = sign_in_request.first["email"]
@@ -184,13 +205,17 @@ class AuthenticatorApp <  Sinatra::Base
       nonce = SecureRandom.uuid
       $nonces.add nonce
 
+      callback_url = "#{$external_base_url}/authenticators/ms-open-id/#{$name}/callback"
+
+      $logger.debug({callback: callback_url})
+
       url = "https://login.microsoftonline.com/" + CGI::escape($tenant) \
         + '/oauth2/authorize?scope=openid&response_type=id_token&response_mode=form_post' \
-        + '&redirect_uri=' + CGI::escape($external_base_url + "/authenticators/ms-open-id/callback") \
+        + '&redirect_uri=' + CGI::escape(callback_url) \
         + '&client_id=' + CGI::escape($client_id) \
         + '&login_hint=' + CGI::escape(email) \
         + '&state=' + CGI::escape(token) \
-        + '&nonce=' + nonce 
+        + '&nonce=' + nonce
 
       redirect url
 
@@ -204,8 +229,11 @@ class AuthenticatorApp <  Sinatra::Base
 
   ### sign-out ##################################################################
 
-  get '/authenticators/ms-open-id/sign-out' do
-    begin 
+  get '/authenticators/ms-open-id/:name/sign-out' do
+
+    $logger.debug(['sign-out', params])
+
+    begin
       redirect $open_id_config[:end_session_endpoint] \
         + "?post_logout_redirect_uri="  \
         + CGI::escape(params[:back_to])
@@ -244,9 +272,12 @@ class AuthenticatorApp <  Sinatra::Base
 
 
 
-  post '/authenticators/ms-open-id/callback' do
+  post '/authenticators/ms-open-id/:name/callback' do
 
-    begin 
+
+    $logger.debug(['callback', params])
+
+    begin
 
       id_token_data = decode_id_token(params[:id_token]).first.with_indifferent_access
 
@@ -255,27 +286,29 @@ class AuthenticatorApp <  Sinatra::Base
       if $nonces.include? nonce
         $nonces.delete nonce
       else
-        raise AuthenticationError, 
+        raise AuthenticationError,
           "The nonce ist not known. Please try again as this can be a temporary issue. " +
           "Contact your leihs administrator if the problem persists."
       end
 
-      token_data = JWT.decode(params[:state], $public_key, 
-        true, { algorithm: 'ES256'}).first.with_indifferent_access
+      token_data = JWT.decode(params[:state], $public_key,
+                              true, { algorithm: 'ES256'}).first.with_indifferent_access
 
       sign_in_request_token = token_data[:sign_in_request_token]
 
-      sign_in_request = JWT.decode sign_in_request_token, 
+      sign_in_request = JWT.decode sign_in_request_token,
         $leihs_public_key, true, { algorithm: 'ES256' }
 
 
-      unless id_token_data[$config[:email_attribute]].presence
-        raise AuthenticationError, 
-          "The required property `unique_name` is missing. Contact your leihs administrator."
+      email = id_token_data[$config[:email_attribute]].presence
+
+      unless email
+        raise AuthenticationError,
+          "The required property `unique_name` resp email is missing. Contact your leihs administrator."
       end
 
-      unless sign_in_request[0]["email"].downcase == id_token_data["upn"].downcase 
-        raise AuthenticationError, 
+      unless sign_in_request[0]["email"].downcase == email.downcase
+        raise AuthenticationError,
           "There is an account mismatch between leihs and the response from the Open-ID provider. " +
           "Make sure you use consistent accounts! " +
           "Contact your leihs administrator if the problem persists."
@@ -284,7 +317,7 @@ class AuthenticatorApp <  Sinatra::Base
 
       token = JWT.encode({
         sign_in_request_token: sign_in_request_token,
-        email: id_token_data["upn"].downcase,
+        email: email.downcase,
         success: true}, $private_key, 'ES256')
 
       url = sign_in_request.first["server_base_url"] \

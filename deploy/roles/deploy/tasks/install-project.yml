@@ -4,31 +4,25 @@
     state: absent
   delegate_to: localhost
 
-- name: create archive
-  shell: |
-    #!/bin/bash
-    set -eux
-    DEPLOY_DIR='{{playbook_dir}}'
-    cd $DEPLOY_DIR/..
-    $DEPLOY_DIR/bin/git-archive-all -v $DEPLOY_DIR/tmp/{{app_name}}.tar.gz
-  delegate_to: localhost
-
 - name: clean/remove existing application dir {{app_dir}}
   file:
     path: '{{app_dir}}'
     state: absent
 
-- name: create empty '{{app_dir}}' 
+- name: create empty '{{app_dir}}'
   file:
     path: '{{app_dir}}'
     state: directory
     owner: '{{app_user}}'
     recurse: yes
-  
-- name: extract archive
-  unarchive:
-    src: '{{playbook_dir}}/tmp/{{app_name}}.tar.gz'
+
+- name: copy service file
+  copy:
+    src: '{{playbook_dir}}/../{{item}}'
     dest: '{{app_dir}}'
     owner: '{{app_user}}'
-    extra_opts:
-    - --strip-components=1
+    mode: 'preserve'
+  with_items:
+    - aad-leihs-authenticator
+    - Gemfile
+    - Gemfile.lock
