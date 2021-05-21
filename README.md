@@ -24,6 +24,7 @@ because of the dot.
 Set up Microsoft OpenID Connect
 -------------------------------
 
+* https://aad.portal.azure.com/
 * https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-protocols-oidc
 * create an Application
 * make sure: ID tokens (used for implicit and hybrid flows) is enabled

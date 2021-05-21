@@ -1,10 +1,9 @@
-name: LEIHS/PHZH-ExtAuth
-windows: 
-  2: 
-    name: phzh-ms-open-id-auth-system
+name: FUNCTIONAL/leihs_aad-auth
+windows:
+  2:
     command: |
-      bundle exec ./phzh-ms-open-id-auth-system -c dev/config.yml
-  3: 
+      # bundle exec ./phzh-ms-open-id-auth-system -c dev/config.yml
+  3:
     name: deploy
     command: |
       # export INVENTORY_HOSTS_FILE=
