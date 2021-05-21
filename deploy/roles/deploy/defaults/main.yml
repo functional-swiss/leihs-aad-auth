@@ -1,5 +1,5 @@
-app_name: 'aad-leihs-{{name}}-auth'
+app_name: 'aad-leihs-{{leihs_auth_name}}-auth'
 app_dir: /{{app_name}}
 app_ruby_version: 2.7.2
 app_user: '{{app_name}}'
-config_file: '{{inventory_dir}}/config/{{name}}_aad-oidc-config.yml'
+config_file: '{{inventory_dir}}/config/{{leihs_auth_name}}_aad-oidc-config.yml'
