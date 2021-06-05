@@ -344,5 +344,6 @@ end
 ################################################################################
 
 AuthenticatorApp.port = $config[:port]
+AuthenticatorApp.bind = 'localhost'
 
 AuthenticatorApp.run!
