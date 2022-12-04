@@ -19,9 +19,9 @@ $logger = Logger.new(STDOUT)
 $logger.level = Logger::WARN
 
 # DEV stuff only
-require 'pry'
-require 'rerun'
-require 'pry-remote'
+# require 'pry'
+# require 'rerun'
+# require 'pry-remote'
 
 ################################################################################
 ### options and config #########################################################

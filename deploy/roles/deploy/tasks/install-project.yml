@@ -26,3 +26,4 @@
     - aad-leihs-authenticator
     - Gemfile
     - Gemfile.lock
+    - .tool-versions

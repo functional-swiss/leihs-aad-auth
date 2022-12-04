@@ -1,3 +1,19 @@
+- name: register ruby version
+  shell: |
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source {{asdf_root_dir}}/current/asdf.sh
+    cd {{app_dir}}
+    asdf current ruby | awk '{print $2}'
+  args:
+    chdir: "{{app_dir}}"
+  args:
+    executable: /bin/bash
+  become: yes
+  become_user: "{{app_user}}"
+  become_method: sudo
+  register: ruby_version
+
 - name: install config
   template:
     src: '{{config_file}}'
