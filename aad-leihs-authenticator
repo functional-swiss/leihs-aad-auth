@@ -172,7 +172,7 @@ class AuthenticatorApp <  Sinatra::Base
         <html>
           <head></head>
           <body>
-            <h1> Unspecified Error in PHZH Open-ID Authentication Service </h1>
+            <h1> Unspecified Error Open-ID Authentication Service </h1>
             <p> Please try again. </p>
             <p> Contact your leihs administrator if this problem occurs again. </p>
           </body>
