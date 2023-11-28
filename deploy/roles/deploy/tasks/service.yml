@@ -14,17 +14,23 @@
   become_method: sudo
   register: ruby_version
 
+- name: make sure `/etc/leihs/' exists
+  file:
+    path: /etc/leihs
+    state: directory
+    mode: '0755'
+
 - name: install config
   template:
     src: '{{config_file}}'
-    dest: '{{app_dir}}/config.yml'
-    mode: 0600
-    owner: '{{app_user}}'
+    dest: '/etc/leihs/{{app_name}}.yml'
+    mode: '0640'
+    owner: root
     group: '{{app_user}}'
 
-- name: copy {{app_name}}.service
+- name: copy service file
   template:
-    src: 'aad-leihs-auth.service'
+    src: 'leihs-aad-auth.service'
     dest: /etc/systemd/system/{{app_name}}.service
     mode: 0644
 

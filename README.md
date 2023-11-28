@@ -6,6 +6,25 @@ Directory](https://azure.microsoft.com/de-de/services/active-directory/) via
 [OpenID Connect](https://de.wikipedia.org/wiki/OpenID_Connect) as an external
 authentication system for [leihs](https://github.com/leihs).
 
+
+BREAKING Changes as of 2022-11
+------------------------------
+
+Deployment:
+
+* the name of the default app, the location, and the default user have changed
+  to be consistency with other (leihs-)apps
+
+* the default config location has changed from the app directory to
+  `/etc/leihs/{{app_name}}.config` to respect linux defaults and to
+  automatically benefit from tools like etc-keeper
+
+WHEN UPDATING: manually stop and (later) remove the old user, service and app
+directory.
+
+
+
+
 Choosing a Parameter Name
 -------------------------
 
@@ -36,17 +55,17 @@ Configuration
 
 The service is started with a configuration file, e.g.
 
-    aad-leihs-authenticator -c /config.yml
+    aad-leihs-authenticator -c config.yml
 
 The content of the configuration file looks like the following:
 
 
 ```
 port: '3434'
-external_base_url: 'https://hkb.leihs.app'
+external_base_url: 'https://my.leihs.app'
 name: 'functional'
-tenant: '9339951a-a51d-4fc7-b3fc-04c3835225e8'
-client_id: 'b9ea77ea-ffe7-481f-8c73-84d8ac910a28'
+tenant: 'REPLACE with ID (domain name should work too)'
+client_id: 'REPLACE'
 email_attribute: 'upn'
 
 private_key: |

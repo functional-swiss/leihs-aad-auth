@@ -12,7 +12,7 @@ Group={{app_user}}
 Environment=PATH={{ruby_dir}}/bin:/usr/local/bin:/usr/bin:/bin
 Environment=APP_ENV=production
 ExecStart={{ruby_dir}}/bin/ruby -S \
-    bundle exec ruby aad-leihs-authenticator -c {{app_dir}}/config.yml
+    bundle exec ruby aad-leihs-authenticator -c '/etc/leihs/{{app_name}}.yml'
 
 [Install]
 WantedBy=multi-user.target

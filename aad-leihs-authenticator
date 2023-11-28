@@ -30,7 +30,7 @@ $logger.level = Logger::WARN
 options = OpenStruct.new
 # options.config_file = Pathname.new("dev/config.yml")
 OptionParser.new do |opts|
-  opts.banner = "Usage: phzh-ms-open-id-auth-system.rb [options]"
+  opts.banner = "Usage: aad-leihs-authenticator [options]"
 
   opts.on("-c", "--config-file [PATH]", String, "Configuration file") do |cf|
     options.config_file = Pathname.new cf

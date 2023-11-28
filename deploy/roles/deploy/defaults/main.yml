@@ -1,4 +1,4 @@
-app_name: 'aad-leihs-{{leihs_auth_name}}-auth'
+app_name: 'leihs-{{leihs_auth_name}}-auth'
 app_dir: /{{app_name}}
 app_user: '{{app_name}}'
 config_file: '{{inventory_dir}}/config/{{leihs_auth_name}}_aad-oidc-config.yml'

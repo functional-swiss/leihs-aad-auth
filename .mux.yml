@@ -2,7 +2,7 @@ name: FUNCTIONAL/leihs_aad-auth
 windows:
   2:
     command: |
-      # bundle exec ./phzh-ms-open-id-auth-system -c dev/config.yml
+      # bundle exec ./aad-leihs-authenticator -c dev/config.yml
   3:
     name: deploy
     command: |
