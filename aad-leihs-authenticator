@@ -104,7 +104,8 @@ class AuthenticatorApp <  Sinatra::Base
 
     # get per tenant config and signing keys
     # NOTE: Microsoft recomments to reload this every 24 Hours
-    # currently the authenticator is erstarted
+    # currently we simply restart the app every 24 hours,
+    # this also cleans the nonce store and prevents memory leaks
 
     $open_id_config =
       "https://login.microsoftonline.com/#{$config[:tenant]}/.well-known/openid-configuration" \
@@ -257,6 +258,7 @@ class AuthenticatorApp <  Sinatra::Base
   ### single sign out ###########################################################
 
   get '/authenticators/ms-open-id/:name/sso-sign-out' do
+<<<<<<< HEAD
 
     begin
 
@@ -281,6 +283,9 @@ class AuthenticatorApp <  Sinatra::Base
 
     end
 
+=======
+    $logger.warn('sso-sign-out', params])
+>>>>>>> c0372e9 (Implement optional login_hint, add (yet noop) .../sso-sign-out URL)
   end
 
 
