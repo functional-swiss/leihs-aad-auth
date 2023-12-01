@@ -15,7 +15,7 @@ Concerns SSO Sign-Out:
 * SSO sign-out triggered from leihs now requires a signed jwt-token. Before
   that a parameter in the url sufficed, which was open to CSRF missuese. The
   implications are very limited (start sign-out process) but potentially
-  anoying.
+  anoying for the user.
 
 WHEN UPDATING: Upgrading leihs to 7.3.0 and later requires an update of the
 authentication serivce to >= 2023-12 and upgades of the authentication service
@@ -90,7 +90,8 @@ following:
 
     https://{{YOUR_SERVER_NAME}}/authenticators/ms-open-id/{{NAME}}/sso-sign-out
 
-Note: this is supported since 2023-12 and requires leihs 7.3.0 or later.
+Note: this is supported since 2023-12 and **requires leihs 7.3.0** or later.
+
 
 
 
