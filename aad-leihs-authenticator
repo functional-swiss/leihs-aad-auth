@@ -258,7 +258,6 @@ class AuthenticatorApp <  Sinatra::Base
   ### single sign out ###########################################################
 
   get '/authenticators/ms-open-id/:name/sso-sign-out' do
-<<<<<<< HEAD
 
     begin
 
@@ -283,9 +282,7 @@ class AuthenticatorApp <  Sinatra::Base
 
     end
 
-=======
-    $logger.warn('sso-sign-out', params])
->>>>>>> c0372e9 (Implement optional login_hint, add (yet noop) .../sso-sign-out URL)
+    $logger.debug(['sso-sign-out', params])
   end
 
 
