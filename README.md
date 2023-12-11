@@ -7,7 +7,24 @@ Directory](https://azure.microsoft.com/de-de/services/active-directory/) via
 authentication system for [leihs](https://github.com/leihs).
 
 
-BREAKING Changes as of 2022-11
+BREAKING Changes as of 2023-12
+------------------------------
+
+Concerns SSO Sign-Out:
+
+* SSO sign-out triggered from leihs now requires a signed jwt-token. Before
+  that a parameter in the url sufficed, which was open to CSRF missuese. The
+  implications are very limited (start sign-out process) but potentially
+  anoying.
+
+WHEN UPDATING: Upgrading leihs to 7.3.0 and later requires an update of the
+authentication serivce to >= 2023-12 and upgades of the authentication service
+require leihs 7.3.0 or later.
+
+
+
+
+BREAKING Changes as of 2023-11
 ------------------------------
 
 Deployment:
@@ -50,6 +67,33 @@ Set up Microsoft OpenID Connect
 * set the redirect URL to `https://{YOUR_SERVER_NAME}/authenticators/ms-open-id/{NAME}/callback`.
 
 
+### Outgoing Single Sign-Out Notifications
+
+By our default configuration leihs will notify sign-outs from leihs to
+Microsoft which will then perform a single sign-out from the whole platform.
+Note: this applies only for the currently used session in the current browser.
+
+To that end the authentication system within leihs uses the configuration
+setting `external_sign_out_url`. And example value would be
+`/authenticators/ms-open-id/{ID}/sign-out`.
+
+This is how SSO on the Microsoft platform is intended to work. **Removing this
+setting exposes some security risks**.
+
+
+
+### Incomming Single Sign-Out Notification (Optional)
+
+To sign out of leihs when the users signs out on Microsoft (or some other app
+which has set up outgoing sign-out) set the "Front-channel logout URL" to the
+following:
+
+    https://{{YOUR_SERVER_NAME}}/authenticators/ms-open-id/{{NAME}}/sso-sign-out
+
+Note: this is supported since 2023-12 and requires leihs 7.3.0 or later.
+
+
+
 Configuration
 -------------
 
@@ -62,6 +106,7 @@ The content of the configuration file looks like the following:
 
 ```
 port: '3434'
+send_login_hint: true
 external_base_url: 'https://my.leihs.app'
 name: 'functional'
 tenant: 'REPLACE with ID (domain name should work too)'
@@ -90,6 +135,19 @@ Valid keys can be generated e.g. with
 openssl ecparam -name prime256v1 -genkey -noout -out tmp/key.pem
 openssl ec -in tmp/key.pem -pubout -out tmp/public.pem
 ```
+
+### Disable `login_hint` if the UPN ist not equal to the E-Mail Address
+
+Microsoft useses (in some cases) the `login_hint` to prefil parts of the
+sign-in form.
+
+The benefits of this are limited since saves the user to reenter this
+information only if there is currently no SSO session.
+
+Hovever, it there is an SSO session, and the login hint does not match the
+information in the session Microsoft will interrupt the SSO flow and ask the
+user for credetials.
+
 
 
 Deployment
@@ -136,5 +194,7 @@ Notes and Links
 curl "https://login.microsoftonline.com/${TENNANT}/.well-known/openid-configuration"
 ```
 
+### Single Sign-Out
 
 
+https://github.com/MicrosoftDocs/azure-docs/issues/8779#issuecomment-391526377

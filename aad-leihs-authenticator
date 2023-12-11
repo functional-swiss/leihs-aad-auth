@@ -15,8 +15,9 @@ require 'sinatra/base'
 require 'yaml'
 
 
+STDOUT.sync = true
 $logger = Logger.new(STDOUT)
-$logger.level = Logger::WARN
+$logger.level = Logger::INFO
 
 # DEV stuff only
 # require 'pry'
@@ -36,14 +37,16 @@ OptionParser.new do |opts|
     options.config_file = Pathname.new cf
   end
 
-  opts.on("-l", "--log-level LOG_LEVEL", String, "Logging level FATAL, ERROR, WARN, INFO, or DEBUG") do |ll|
+  opts.on("-l", "--log-level LOG_LEVEL", String,
+          "Logging level FATAL, ERROR, WARN, INFO, or DEBUG") do |ll|
     $logger.level = "Logger::#{ll.upcase}".constantize
   end
 
 end.parse!
 
 $config = {
-  port: 3434
+  port: 3434,
+  send_login_hint: true
 }.with_indifferent_access.deep_merge(
   YAML.load_file(options.config_file).with_indifferent_access)
 
@@ -101,6 +104,7 @@ class AuthenticatorApp <  Sinatra::Base
 
     # get per tenant config and signing keys
     # NOTE: Microsoft recomments to reload this every 24 Hours
+    # currently the authenticator is erstarted
 
     $open_id_config =
       "https://login.microsoftonline.com/#{$config[:tenant]}/.well-known/openid-configuration" \
@@ -166,7 +170,7 @@ class AuthenticatorApp <  Sinatra::Base
   end
 
   def generic_error_response e
-    status 403
+    status 500
     $logger.error "#{e} #{e.backtrace}"
     <<-HTML.strip_heredoc
         <html>
@@ -186,13 +190,15 @@ class AuthenticatorApp <  Sinatra::Base
 
   get '/authenticators/ms-open-id/:name/sign-in' do
 
-    $logger.debug(['sign-in', params])
+    $logger.info(['sign-in', params])
 
     begin
 
       sign_in_request_token = params[:token].presence
       sign_in_request = JWT.decode sign_in_request_token,
         $leihs_public_key, true, { algorithm: 'ES256' }
+
+      $logger.debug({sign_in_request: sign_in_request})
 
       email = sign_in_request.first["email"]
 
@@ -207,13 +213,11 @@ class AuthenticatorApp <  Sinatra::Base
 
       callback_url = "#{$external_base_url}/authenticators/ms-open-id/#{$name}/callback"
 
-      $logger.debug({callback: callback_url})
-
       url = "https://login.microsoftonline.com/" + CGI::escape($tenant) \
         + '/oauth2/authorize?scope=openid&response_type=id_token&response_mode=form_post' \
         + '&redirect_uri=' + CGI::escape(callback_url) \
         + '&client_id=' + CGI::escape($client_id) \
-        + '&login_hint=' + CGI::escape(email) \
+        + ($config[:send_login_hint] ? '&login_hint=' + CGI::escape(email) : '') \
         + '&state=' + CGI::escape(token) \
         + '&nonce=' + nonce
 
@@ -231,16 +235,54 @@ class AuthenticatorApp <  Sinatra::Base
 
   get '/authenticators/ms-open-id/:name/sign-out' do
 
-    $logger.debug(['sign-out', params])
+    $logger.info(['sign-out', {params: params}])
+
+    token = params[:token]
+
+    token_payload = JWT.decode(token, $leihs_public_key, true, { algorithm: 'ES256' }
+                        ).first.with_indifferent_access
+
+    $logger.debug(['sign-out', {token_payload: token_payload}])
 
     begin
       redirect $open_id_config[:end_session_endpoint] \
         + "?post_logout_redirect_uri="  \
-        + CGI::escape(params[:back_to])
+        + CGI::escape(token_payload[:back_to])
     rescue StandardError => e
       generic_error_response e
     end
   end
+
+
+  ### single sign out ###########################################################
+
+  get '/authenticators/ms-open-id/:name/sso-sign-out' do
+
+    begin
+
+      $logger.info(['sso-sign-out', {prarams: params}])
+
+      sid = params[:sid].presence
+
+      sign_out_token = JWT.encode({
+        external_session_id: sid},$private_key, 'ES256')
+
+      url = $external_base_url + \
+        "/sign-out/external-authentication/" + \
+        $name + "/sso-sign-out?token=" + sign_out_token
+
+      $logger.debug(['sso-sign-out redirect', {sid: sid, url: url}])
+
+      redirect url
+
+    rescue StandardError => e
+
+      generic_error_response e
+
+    end
+
+  end
+
 
 
   ### callback ##################################################################
@@ -274,12 +316,16 @@ class AuthenticatorApp <  Sinatra::Base
 
   post '/authenticators/ms-open-id/:name/callback' do
 
-
-    $logger.debug(['callback', params])
+    $logger.info(['callback', params])
 
     begin
 
+      external_session_id = params[:session_state].presence
+      $logger.debug(['callback', {external_session_id: external_session_id}])
+
       id_token_data = decode_id_token(params[:id_token]).first.with_indifferent_access
+
+      $logger.debug(['callback', {id_token_data: id_token_data}])
 
       nonce = id_token_data[:nonce]
 
@@ -293,6 +339,8 @@ class AuthenticatorApp <  Sinatra::Base
 
       token_data = JWT.decode(params[:state], $public_key,
                               true, { algorithm: 'ES256'}).first.with_indifferent_access
+
+      $logger.debug(["callback", {token_data: token_data}])
 
       sign_in_request_token = token_data[:sign_in_request_token]
 
@@ -314,11 +362,16 @@ class AuthenticatorApp <  Sinatra::Base
           "Contact your leihs administrator if the problem persists."
       end
 
-
-      token = JWT.encode({
+      token_payload = {
         sign_in_request_token: sign_in_request_token,
         email: email.downcase,
-        success: true}, $private_key, 'ES256')
+        external_session_id: external_session_id,
+        success: true}
+
+      $logger.debug(["callback", {token_payload: token_payload}])
+
+
+      token = JWT.encode(token_payload, $private_key, 'ES256')
 
       url = sign_in_request.first["server_base_url"] \
         + sign_in_request.first['path'] + "?token=#{token}"
