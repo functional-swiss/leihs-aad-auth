@@ -272,9 +272,11 @@ class AuthenticatorApp <  Sinatra::Base
         "/sign-out/external-authentication/" + \
         $name + "/sso-sign-out?token=" + sign_out_token
 
-      $logger.debug(['sso-sign-out redirect', {sid: sid, url: url}])
+      resp = RestClient.get url
 
-      redirect url
+      $logger.info(['sso-sign-out', {leihs_resp: resp}])
+
+      halt 204
 
     rescue StandardError => e
 
@@ -282,7 +284,6 @@ class AuthenticatorApp <  Sinatra::Base
 
     end
 
-    $logger.debug(['sso-sign-out', params])
   end
 
 
@@ -318,7 +319,7 @@ class AuthenticatorApp <  Sinatra::Base
 
   post '/authenticators/ms-open-id/:name/callback' do
 
-    $logger.info(['callback', params])
+    $logger.debug(['callback', params])
 
     begin
 
