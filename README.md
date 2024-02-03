@@ -40,6 +40,24 @@ WHEN UPDATING: manually stop and (later) remove the old user, service and app
 directory.
 
 
+Quick Setup in Microsoft Entra
+------------------------------
+
+Within Entra https://entra.microsoft.com/ open the application or crate a new
+one. Select **Authentication**. Click on **Add a platform**. Select **Web**.
+
+Set the Redirect URI, e.g.:
+
+    https://leihs.uni-muster.ch/authenticators/ms-open-id/functional/callback
+
+Set the Front-channel logout URL, e.g.:
+
+    https://leihs.uni-muster.ch/authenticators/ms-open-id/functional/sso-sign-out
+
+
+Select the **checkbox** _ID tokens (used for implicit and hybrid flows)_.
+
+
 
 
 Choosing a Parameter Name
