@@ -1,10 +1,39 @@
-Leihs - Azure Active Directory Open-ID Connect - Authentication System
-=======================================================================
+Leihs - MS Entra (Azure Active Directory) Open-ID Connect - Authentication System
+=================================================================================
 
 This project contains code and deployment recipes to use [Azure Active
 Directory](https://azure.microsoft.com/de-de/services/active-directory/) via
 [OpenID Connect](https://de.wikipedia.org/wiki/OpenID_Connect) as an external
 authentication system for [leihs](https://github.com/leihs).
+
+
+Quick Setup in Microsoft Entra
+------------------------------
+
+Within Entra https://entra.microsoft.com/ open your Leihs enterprise
+application (or create a new one). Select **Authentication**. Click on **Add a
+platform**. Select **Web**.
+
+
+Set the **Redirect URI** (replace the hostname and name parameter _functional_) ,
+e.g.:
+
+    https://leihs.uni-muster.ch/authenticators/ms-open-id/functional/callback
+
+Set the **Front-channel logout URL**, e.g.:
+
+    https://leihs.uni-muster.ch/authenticators/ms-open-id/functional/sso-sign-out
+
+
+Select the **checkbox** _ID tokens (used for implicit and hybrid flows)_.
+
+
+Note the the **Application (client) ID** and provide it to functional (or see
+confinguration below if you are maintainig this application yourself).
+
+
+
+
 
 
 BREAKING Changes as of 2023-12
@@ -38,25 +67,6 @@ Deployment:
 
 WHEN UPDATING: manually stop and (later) remove the old user, service and app
 directory.
-
-
-Quick Setup in Microsoft Entra
-------------------------------
-
-Within Entra https://entra.microsoft.com/ open the application or crate a new
-one. Select **Authentication**. Click on **Add a platform**. Select **Web**.
-
-Set the Redirect URI, e.g.:
-
-    https://leihs.uni-muster.ch/authenticators/ms-open-id/functional/callback
-
-Set the Front-channel logout URL, e.g.:
-
-    https://leihs.uni-muster.ch/authenticators/ms-open-id/functional/sso-sign-out
-
-
-Select the **checkbox** _ID tokens (used for implicit and hybrid flows)_.
-
 
 
 
