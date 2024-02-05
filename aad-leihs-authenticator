@@ -85,6 +85,8 @@ class AuthenticatorApp <  Sinatra::Base
     $name = $config[:name].presence \
       || (raise 'name must be present in config')
 
+    $leihs_auth_id = $config[:leihs_auth_id].presence || $name
+
     $client_id = $config[:client_id].presence  \
       || (raise 'client_id must be present in config')
 
@@ -270,8 +272,7 @@ class AuthenticatorApp <  Sinatra::Base
 
       url = $external_base_url + \
         "/sign-out/external-authentication/" + \
-        $name + "/sso-sign-out?token=" + sign_out_token
-
+        $leihs_auth_id + "/sso-sign-out?token=" + sign_out_token
 
       redirect url
 
