@@ -18,7 +18,7 @@
 
 - name: copy service file
   copy:
-    src: '{{playbook_dir}}/../{{item}}'
+    src: '{{role_path}}/../../../{{item}}'
     dest: '{{app_dir}}'
     owner: '{{app_user}}'
     mode: 'preserve'

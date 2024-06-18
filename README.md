@@ -11,8 +11,9 @@ Quick Setup in Microsoft Entra
 ------------------------------
 
 Within Entra https://entra.microsoft.com/ open your Leihs enterprise
-application (or create a new one). Select **Authentication**. Click on **Add a
-platform**. Select **Web**.
+application (or create a new one). Move to **Aplication Registration** (there
+should be a link from the **Properties** page), then
+select **Authentication**. Click on **Add a platform**. Select **Web**.
 
 
 Set the **Redirect URI** (replace the hostname and name parameter _functional_) ,
