@@ -305,8 +305,6 @@ class AuthenticatorApp <  Sinatra::Base
 
       unverified_message = JWT.decode(id_token, nil, false)
 
-      key = ms_signing_key(unverified_message)
-
       algorithm = unverified_message[1]["alg"]
 
       JWT.decode(id_token, ms_signing_key(unverified_message), true, {algorithm: algorithm})

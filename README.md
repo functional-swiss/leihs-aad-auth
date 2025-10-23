@@ -1,8 +1,7 @@
 Leihs - MS Entra (Azure Active Directory) Open-ID Connect - Authentication System
 =================================================================================
 
-This project contains code and deployment recipes to use [Azure Active
-Directory](https://azure.microsoft.com/de-de/services/active-directory/) via
+This project contains code and deployment recipes to use [Microsoft Entra ID](https://www.microsoft.com/de-de/security/business/identity-access/microsoft-entra-id)  via
 [OpenID Connect](https://de.wikipedia.org/wiki/OpenID_Connect) as an external
 authentication system for [leihs](https://github.com/leihs).
 
