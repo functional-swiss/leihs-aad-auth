@@ -9,9 +9,11 @@ WorkingDirectory={{app_dir}}
 User={{app_user}}
 Group={{app_user}}
 
-Environment=PATH={{ruby_dir}}/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=/home/{{app_user}}/.local/bin:/usr/local/bin:/usr/bin:/bin
 Environment=APP_ENV=production
-ExecStart={{ruby_dir}}/bin/ruby -S \
+Environment=GEM_HOME=/home/{{app_user}}/.local/share/gem
+Environment=GEM_PATH=/home/{{app_user}}/.local/share/gem
+ExecStart=/usr/bin/ruby -S \
     bundle exec ruby aad-leihs-authenticator -c '/etc/leihs/{{app_name}}.yml'
 
 [Install]
