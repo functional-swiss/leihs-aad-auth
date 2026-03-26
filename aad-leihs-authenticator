@@ -50,6 +50,12 @@ $config = {
 }.with_indifferent_access.deep_merge(
   YAML.load_file(options.config_file).with_indifferent_access)
 
+if $config['proxy-host'].present?
+  proxy_port = $config['proxy-port'] || 80
+  RestClient.proxy = "http://#{$config['proxy-host']}:#{proxy_port}"
+  $logger.info("Using proxy: #{RestClient.proxy}")
+end
+
 
 ################################################################################
 ### a custom error which message will appear in the reponse ####################
