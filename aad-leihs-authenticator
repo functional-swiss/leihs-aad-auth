@@ -2,6 +2,7 @@
 
 require 'active_support/all'
 require 'cgi'
+require 'base64'
 require 'digest'
 require 'jwt'
 require 'logger'
@@ -18,6 +19,7 @@ require 'yaml'
 STDOUT.sync = true
 $logger = Logger.new(STDOUT)
 $logger.level = Logger::INFO
+RestClient.log = $logger
 
 # DEV stuff only
 # require 'pry'
@@ -96,6 +98,21 @@ class AuthenticatorApp <  Sinatra::Base
     $client_id = $config[:client_id].presence  \
       || (raise 'client_id must be present in config')
 
+    $client_secret = $config[:client_secret].presence
+
+    $auth_flow = if $client_secret
+      :confidential_code
+    else
+      :implicit
+    end
+
+    case $auth_flow
+    when :confidential_code
+      $logger.info('auth flow: authorization code + PKCE with client secret (confidential client)')
+    when :implicit
+      $logger.warn('auth flow: implicit grant (deprecated) — configure client_secret to upgrade')
+    end
+
     $private_key = OpenSSL::PKey.read(
         $config[:private_key].presence \
         || (raise 'private_key must be present in config'))
@@ -116,7 +133,7 @@ class AuthenticatorApp <  Sinatra::Base
     # this also cleans the nonce store and prevents memory leaks
 
     $open_id_config =
-      "https://login.microsoftonline.com/#{$config[:tenant]}/.well-known/openid-configuration" \
+      "https://login.microsoftonline.com/#{$config[:tenant]}/v2.0/.well-known/openid-configuration" \
       .yield_self { |config_url| RestClient.get config_url}
       .yield_self { |resp| JSON.parse(resp).with_indifferent_access }
 
@@ -240,24 +257,45 @@ class AuthenticatorApp <  Sinatra::Base
 
       email = sign_in_request.first["email"]
 
-      token = JWT.encode({
-        sign_in_request_token: sign_in_request_token
-        # and more if we ever need it
-      }, $private_key, 'ES256')
-
-
       nonce = SecureRandom.uuid
       $nonces.add nonce
 
       callback_url = "#{$external_base_url}/authenticators/ms-open-id/#{$name}/callback"
 
-      url = "https://login.microsoftonline.com/" + CGI::escape($tenant) \
-        + '/oauth2/authorize?scope=openid&response_type=id_token&response_mode=form_post' \
-        + '&redirect_uri=' + CGI::escape(callback_url) \
-        + '&client_id=' + CGI::escape($client_id) \
-        + ($config[:send_login_hint] ? '&login_hint=' + CGI::escape(email) : '') \
-        + '&state=' + CGI::escape(token) \
-        + '&nonce=' + nonce
+      if $auth_flow == :implicit
+        # implicit grant flow (deprecated)
+        token = JWT.encode({
+          sign_in_request_token: sign_in_request_token
+        }, $private_key, 'ES256')
+
+        url = "https://login.microsoftonline.com/" + CGI::escape($tenant) \
+          + '/oauth2/v2.0/authorize?scope=openid&response_type=id_token&response_mode=form_post' \
+          + '&redirect_uri=' + CGI::escape(callback_url) \
+          + '&client_id=' + CGI::escape($client_id) \
+          + ($config[:send_login_hint] ? '&login_hint=' + CGI::escape(email) : '') \
+          + '&state=' + CGI::escape(token) \
+          + '&nonce=' + nonce
+      else
+        # authorization code flow with PKCE (confidential or public client)
+        code_verifier = SecureRandom.urlsafe_base64(48)
+        code_challenge = Base64.urlsafe_encode64(
+          Digest::SHA256.digest(code_verifier), padding: false)
+
+        token = JWT.encode({
+          sign_in_request_token: sign_in_request_token,
+          code_verifier: code_verifier
+        }, $private_key, 'ES256')
+
+        url = "https://login.microsoftonline.com/" + CGI::escape($tenant) \
+          + '/oauth2/v2.0/authorize?scope=openid&response_type=code&response_mode=form_post' \
+          + '&redirect_uri=' + CGI::escape(callback_url) \
+          + '&client_id=' + CGI::escape($client_id) \
+          + ($config[:send_login_hint] ? '&login_hint=' + CGI::escape(email) : '') \
+          + '&state=' + CGI::escape(token) \
+          + '&nonce=' + nonce \
+          + '&code_challenge=' + code_challenge \
+          + '&code_challenge_method=S256'
+      end
 
       redirect url
 
@@ -357,7 +395,40 @@ class AuthenticatorApp <  Sinatra::Base
       external_session_id = params[:session_state].presence
       $logger.debug(['callback', {external_session_id: external_session_id}])
 
-      id_token_data = decode_id_token(params[:id_token]).first.with_indifferent_access
+      token_data = JWT.decode(params[:state], $public_key,
+                              true, { algorithm: 'ES256'}).first.with_indifferent_access
+
+      $logger.debug(['callback', {token_data: token_data}])
+
+      callback_url = "#{$external_base_url}/authenticators/ms-open-id/#{$name}/callback"
+
+      if $auth_flow == :implicit
+        # implicit grant flow (deprecated) — id_token is returned directly by the provider
+        id_token_data = decode_id_token(params[:id_token]).first.with_indifferent_access
+      else
+        # authorization code flow with PKCE (confidential or public client)
+        token_exchange_params = {
+          grant_type: 'authorization_code',
+          code: params[:code],
+          redirect_uri: callback_url,
+          client_id: $client_id,
+          code_verifier: token_data[:code_verifier]
+        }
+        token_exchange_params[:client_secret] = $client_secret if $client_secret
+        begin
+          token_response = RestClient.post(
+            "https://login.microsoftonline.com/#{CGI::escape($tenant)}/oauth2/v2.0/token",
+            token_exchange_params
+          )
+        rescue RestClient::ExceptionWithResponse => e
+          $logger.error("Token exchange failed: #{e.response.code}")
+          $logger.error("Response headers: #{e.response.headers}")
+          $logger.error("Response body: #{e.response.body}")
+          raise
+        end
+        token_response_data = JSON.parse(token_response).with_indifferent_access
+        id_token_data = decode_id_token(token_response_data[:id_token]).first.with_indifferent_access
+      end
 
       $logger.debug(['callback', {id_token_data: id_token_data}])
 
@@ -371,22 +442,19 @@ class AuthenticatorApp <  Sinatra::Base
           "Contact your leihs administrator if the problem persists."
       end
 
-      token_data = JWT.decode(params[:state], $public_key,
-                              true, { algorithm: 'ES256'}).first.with_indifferent_access
-
-      $logger.debug(["callback", {token_data: token_data}])
-
       sign_in_request_token = token_data[:sign_in_request_token]
 
       sign_in_request = JWT.decode sign_in_request_token,
         $leihs_public_key, true, { algorithm: 'ES256' }
 
+      
+      email_attribute = $config[:email_attribute]
 
-      email = id_token_data[$config[:email_attribute]].presence
+      email = id_token_data[email_attribute].presence
 
       unless email
         raise AuthenticationError,
-          "The required property `unique_name` resp email is missing. Contact your leihs administrator."
+          "The configured property for email_attribute=#{email_attribute} is missing. Contact your leihs administrator."
       end
 
       unless sign_in_request[0]["email"].downcase == email.downcase

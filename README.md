@@ -24,49 +24,9 @@ Set the **Front-channel logout URL**, e.g.:
 
     https://leihs.uni-muster.ch/authenticators/ms-open-id/functional/sso-sign-out
 
+Enable the **ID tokens (used for implicit and hybrid flows)** checkbox.
 
-Select the **checkbox** _ID tokens (used for implicit and hybrid flows)_.
-
-
-Note the the **Application (client) ID** and provide it to functional (or see
-confinguration below if you are maintainig this application yourself).
-
-
-
-
-
-
-BREAKING Changes as of 2023-12
-------------------------------
-
-Concerns SSO Sign-Out:
-
-* SSO sign-out triggered from leihs now requires a signed jwt-token. Before
-  that a parameter in the url sufficed, which was open to CSRF missuese. The
-  implications are very limited (start sign-out process) but potentially
-  anoying for the user.
-
-WHEN UPDATING: Upgrading leihs to 7.3.0 and later requires an update of the
-authentication serivce to >= 2023-12 and upgades of the authentication service
-require leihs 7.3.0 or later.
-
-
-
-
-BREAKING Changes as of 2023-11
-------------------------------
-
-Deployment:
-
-* the name of the default app, the location, and the default user have changed
-  to be consistency with other (leihs-)apps
-
-* the default config location has changed from the app directory to
-  `/etc/leihs/{{app_name}}.config` to respect linux defaults and to
-  automatically benefit from tools like etc-keeper
-
-WHEN UPDATING: manually stop and (later) remove the old user, service and app
-directory.
+Read the section "Grant Flows" below to understand the available authentication flow options.
 
 
 
@@ -91,8 +51,12 @@ Set up Microsoft OpenID Connect
 * https://aad.portal.azure.com/
 * https://docs.microsoft.com/en-us/azure/active-directory/develop/v2-protocols-oidc
 * create an Application
-* make sure: ID tokens (used for implicit and hybrid flows) is enabled
-* set the redirect URL to `https://{YOUR_SERVER_NAME}/authenticators/ms-open-id/{NAME}/callback`.
+* For the **authorization code flow with client secret** (recommended): create a
+  **client secret** under **Certificates & secrets**. The **ID tokens** checkbox is
+  not required.
+* For the legacy **implicit grant flow** (deprecated, default fallback): enable the
+  **ID tokens (used for implicit and hybrid flows)** checkbox.
+* Set the redirect URL to `https://{YOUR_SERVER_NAME}/authenticators/ms-open-id/{NAME}/callback`.
 
 
 ### Outgoing Single Sign-Out Notifications
@@ -122,6 +86,44 @@ Note: this is supported since 2023-12 and **requires leihs 7.3.0** or later.
 
 
 
+Grant Flows
+-----------
+
+The authenticator supports two authentication flows, selected by configuration.
+The flow is determined at startup and logged.
+
+### 1. Authorization code + PKCE with client secret (recommended)
+
+The strongest option for server-side deployments. The `client_secret` authenticates
+the application to Microsoft at the token exchange step, in addition to the PKCE
+`code_verifier` which proves the exchange comes from the same request that started
+the flow.
+
+Required Entra configuration:
+- Create a **client secret** under **Certificates & secrets** and note its value.
+- The **ID tokens (used for implicit and hybrid flows)** checkbox is **not** required.
+
+Required config:
+```yaml
+client_id: 'REPLACE'
+client_secret: 'REPLACE'
+```
+
+### 2. Implicit grant flow (deprecated, default fallback)
+
+The original flow. The `id_token` is delivered directly from Microsoft to the
+browser and form-posted to the callback, never exchanged via a server-side call.
+This flow is deprecated by Microsoft and the OAuth Security BCP. Existing
+deployments continue to work without any configuration change.
+
+Required Entra configuration:
+- Enable the **ID tokens (used for implicit and hybrid flows)** checkbox under
+  **Authentication** → **Implicit grant and hybrid flows**.
+
+Required config: nothing extra — this is the default when `client_secret`
+is not set.
+
+
 Configuration
 -------------
 
@@ -139,6 +141,17 @@ external_base_url: 'https://my.leihs.app'
 name: 'functional'
 tenant: 'REPLACE with ID (domain name should work too)'
 client_id: 'REPLACE'
+
+# Authentication flow — choose one of the two variants:
+#
+# 1. Authorization code + PKCE with client secret (recommended):
+#    client_secret: 'REPLACE'
+#
+# 2. Implicit grant flow (deprecated, default when client_secret is not set)
+#    No extra config needed; enable "ID tokens" checkbox in Entra.
+
+client_secret: 'REPLACE'
+
 email_attribute: 'upn'
 
 private_key: |
