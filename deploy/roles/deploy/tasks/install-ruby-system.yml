@@ -32,7 +32,9 @@
 - name: install ruby gems for application
   shell: |
     cd {{app_dir}}
-    bundle install --deployment --without development test
+    bundle config set --local deployment true
+    bundle config set --local without 'development test'
+    bundle install
   become: yes
   become_user: '{{app_user}}'
   environment:
