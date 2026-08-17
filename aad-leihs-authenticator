@@ -132,9 +132,13 @@ class AuthenticatorApp <  Sinatra::Base
     # currently we simply restart the app every 24 hours,
     # this also cleans the nonce store and prevents memory leaks
 
-    $open_id_config =
-      "https://login.microsoftonline.com/#{$config[:tenant]}/v2.0/.well-known/openid-configuration" \
-      .yield_self { |config_url| RestClient.get config_url}
+    well_known_url = if $auth_flow == :implicit
+      "https://login.microsoftonline.com/#{$config[:tenant]}/.well-known/openid-configuration"
+    else
+      "https://login.microsoftonline.com/#{$config[:tenant]}/v2.0/.well-known/openid-configuration"
+    end
+
+    $open_id_config = RestClient.get(well_known_url)
       .yield_self { |resp| JSON.parse(resp).with_indifferent_access }
 
     $ms_keys = $open_id_config
@@ -269,7 +273,7 @@ class AuthenticatorApp <  Sinatra::Base
         }, $private_key, 'ES256')
 
         url = "https://login.microsoftonline.com/" + CGI::escape($tenant) \
-          + '/oauth2/v2.0/authorize?scope=openid&response_type=id_token&response_mode=form_post' \
+          + '/oauth2/authorize?scope=openid&response_type=id_token&response_mode=form_post' \
           + '&redirect_uri=' + CGI::escape(callback_url) \
           + '&client_id=' + CGI::escape($client_id) \
           + ($config[:send_login_hint] ? '&login_hint=' + CGI::escape(email) : '') \
