@@ -2,3 +2,4 @@
 /tmp
 deploy/deploy_play.retry
 .vscode/
+.DS_Store
