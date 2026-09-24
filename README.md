@@ -109,6 +109,12 @@ client_id: 'REPLACE'
 client_secret: 'REPLACE'
 ```
 
+You need to explicitly allow the claims `email` and `upn` in the Entra
+application manifest for this authentication. It is in the section "Token
+configuration".
+
+
+
 ### 2. Implicit grant flow (deprecated, default fallback)
 
 The original flow. The `id_token` is delivered directly from Microsoft to the
